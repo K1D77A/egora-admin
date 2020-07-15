@@ -122,7 +122,7 @@
 (defun tokenize (token &rest args)
   (append args (list "?access_token=") (list token)))
 
-(defmacro auth-req (method connection url plist response-var &body body)
+(defmacro auth-req ((method connection url plist response-var) &body body)
   (check-type url list)
   (let ((req (case method
                (:post 
