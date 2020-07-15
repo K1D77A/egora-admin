@@ -1,4 +1,4 @@
-(in-package :egora-admin)
+(in-package #:egora-admin)
 
 (defclass connection ()
   ((logged-in-p
@@ -27,6 +27,18 @@
    (device-id
     :accessor device-id
     :type string)))
+
+(defmethod print-object ((connection connection) stream)
+  (print-unreadable-object (connection stream :type t :identity t)
+    (format stream "~&URL: ~S~%Username: ~S~%Logged in: ~SAuth: ~S~%Device-id: ~S~%"
+            (str:concat (url connection) (api connection))
+            (username connection)
+            (logged-in-p connection)
+            (auth connection)
+            (device-id connection))))
+
+(defun make-connection (username password url api)
+  (make-instance 'connection :username username :password password :url url :api api))
 
 (defclass auth ()
   ((token

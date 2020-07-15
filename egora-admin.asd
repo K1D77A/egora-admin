@@ -14,4 +14,6 @@
   :components ((:file "package")
                (:file "classes")
                (:file "tests")
-               (:file "egora-admin")))
+               (:file "egora-admin")
+               (:file "user-api")
+               (:file "admin-api")))

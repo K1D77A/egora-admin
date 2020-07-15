@@ -2,7 +2,6 @@
 
 (in-package #:egora-admin)
 
-(in-package #:egora-admin)
 (defparameter *url* "https://matrix.k1d77a.com")
 (defparameter *api* "/_matrix/client/r0/")
 
@@ -12,15 +11,14 @@
 
 ;;;I really need to add some better error reporting
 
-
+(defparameter *url* "https://matrix.k1d77a.com")
+(defparameter *api* "/_matrix/client/r0/")
 
 ;;there is also an optional discover information thingy but I'll ignore that for now
 
-(defun make-connection (username password)
-  (make-instance 'connection :username username :password password))
 
 (defun plist-key-val (plist key)
-  "gets the value associated with KEY in PLIST"
+  "Gets the value associated with KEY in PLIST."
   (let ((pos (position key plist)))
     (if (integerp pos)
         (nth (1+ pos) plist);;slow but who cares
@@ -28,6 +26,8 @@
 
 (defmacro pkv (plist key)
   `(plist-key-val ,plist ,key))
+
+;;;post requests 
 
 (defun post-r (url &optional (plist nil))
   (handler-case
@@ -39,13 +39,79 @@
       (signal-condition-from-response (jojo:parse (dexador.error:response-body c))))))
 
 (defun post-api (url &rest encoder-and-its-args)
-  (apply #'post-r (apply #'str:concat  url) encoder-and-its-args))
+  (apply #'post-r (apply #'str:concat url) encoder-and-its-args))
+
+(defun admin-post (url token &optional (plist nil))
+  (handler-case
+      (if plist
+          (dex:post url :headers `(("contentType" . ,+content-type+)
+                                   ("Authorization" . ,(format nil "Bearer ~A" token)))
+                        :content  (jojo:to-json plist :from :plist))
+          (dex:post url :headers `(("contentType" . ,+content-type+)
+                                   ("Authorization" . ,(format nil "Bearer ~A" token)))))
+    (condition (c);;total catchall oh well
+      (signal-condition-from-response (jojo:parse (dexador.error:response-body c))))))
+
+
+(defun admin-post-api (url token &rest plist)
+  (apply #'admin-post (apply #'str:concat url) token plist))
+
+
+;;;put requests 
+(defun put-r (url plist)
+  (handler-case
+      (dex:put url :headers `(("contentType" . ,+content-type+))
+                   :content  (jojo:to-json plist :from :plist))
+    (condition (c);;total catchall oh well
+      (signal-condition-from-response (jojo:parse (dexador.error:response-body c))))))
+
+(defun admin-put-r (url token plist)
+  (handler-case
+      (dex:put url :headers `(("contentType" . ,+content-type+)
+                              ("Authorization" . ,(format nil "Bearer ~A" token)))
+                   :content  (jojo:to-json plist :from :plist))
+    (condition (c);;total catchall oh well
+      (signal-condition-from-response (jojo:parse (dexador.error:response-body c))))))
+
+(defun put-api (url plist)
+  (apply #'put-r (apply #'str:concat url) plist))
+
+(defun admin-put-api (url token &rest plist)
+  (apply #'admin-put-r (apply #'str:concat url) token plist))
+
+
+;;;get requests
 
 (defun get-api (url)
   (handler-case 
       (dex:get (apply #'str:concat url))
     (condition (c);;total catchall oh well
       (signal-condition-from-response (jojo:parse (dexador.error:response-body c))))))
+
+(defun admin-get-api (url token)
+  (handler-case 
+      (dex:get (apply #'str:concat url)
+               :headers `(("Authorization" . ,(format nil "Bearer ~A" token))))
+    (condition (c);;total catchall oh well
+      (signal-condition-from-response (jojo:parse (dexador.error:response-body c))))))
+
+(defun admin-get (url token)
+  (dex:get url :headers `(("Authorization" . ,(format nil "Bearer ~A" token)))))
+
+;;;delete requests
+
+(defun admin-delete-api (url token)
+  (handler-case 
+      (dex:delete (apply #'str:concat url)
+                  :headers `(("Authorization" . ,(format nil "Bearer ~A" token))))
+    (condition (c);;total catchall oh well
+      (signal-condition-from-response (jojo:parse (dexador.error:response-body c))))))
+
+(defun admin-delete (url token)
+  (dex:delete url :headers `(("Authorization" . ,(format nil "Bearer ~A" token)))))
+
+
+
 
 
 
@@ -67,64 +133,26 @@
                 `(jojo:parse (get-api (tokenize (token (auth ,connection))
                                                 (url ,connection) (api ,connection)
                                                 ,@url))))
+               (:admin-post
+                `(jojo:parse (admin-post-api
+                              (list (url ,connection) ,@url)
+                              (token (auth ,connection)) ,plist)))
+               (:admin-get
+                `(jojo:parse (admin-get-api
+                              (list (url ,connection) ,@url)
+                              (token (auth ,connection)))))
+               (:admin-put
+                `(jojo:parse (admin-put-api
+                              (list (url ,connection) ,@url)
+                              (token (auth ,connection)) ,plist)))
+               (:admin-delete
+                `(jojo:parse (admin-delete-api
+                              (list (url ,connection) ,@url)
+                              (token (auth ,connection)))))
                (otherwise (error "invalid HTTP method")))))
-
     `(let ((,response-var ,req))
        ,@body)))
 
-(defun password-login-plist (connection)
-  (list :|type| "m.login.password"
-        :|identifier| (list :|type| "m.id.user"
-                            :|user| (username connection))
-        :|password| (password connection)))
 
-(defun password-login (connection)
-  "Takes a CONNECTION object and attempts to login."
-  (auth-req :post connection ("login") (password-login-plist connection) resp
-    (setf (device-id connection) (pkv resp :|device_id|))
-    (setf (auth connection) (make-instance 'auth :token (pkv resp :|access_token|)))
-    connection))
 
-(defun public-rooms (connection)
-  "Returns all the public rooms accessible by CONNECTION."
-  (auth-req :get connection ("publicRooms") nil resp
-    resp))
-
-(defun sync (connection)
-  "Gets the latest sync object from the server using CONNECTION."
-  (auth-req :get connection ("sync") nil resp
-    resp))
-
-(defun join-room (connection id)
-  "Makes CONNECTION joined the room denoted by ID. Assuming it can."
-  (auth-req :post connection ("join/" id) (list :roomid id) resp
-    resp))
-
-(defun joined-rooms (connection)
-  "Returns the rooms that CONNECTION is within."
-  (auth-req :get connection ("joined_rooms") nil resp
-    resp))
-
-(defun make-auth (connection)
-  "Creates a plist which represents an auth token that can be sent to the server using data within
-CONNECTION."
-  (list :|auth| (list :|access_token| (token (auth connection)))))
-
-(defun logout (connection)
-  "Logs out CONNECTION."
-  (auth-req :post connection ("logout") nil resp
-    resp))
-
-(defun send-message-to-room (connection room-id message)
-  "Sends the message MESSAGE to the ROOM-ID, assuming CONNECTION is within it."
-  (auth-req :post connection ("/roomsd/" room-id "/send/m.room.message")
-      (list :|msgtype| "m.text" :|body| message) resp
-    resp))
-
-(defun send-message-to-all-rooms (connection message)
-  "Sends the message MESSAGE to all the rooms that CONNECTION is in."
-  (let ((joined (pkv (joined-rooms connection)  :|joined_rooms| )))
-    (mapcar (lambda (id)
-              (send-message-to-room connection id message))
-            joined)))
 
