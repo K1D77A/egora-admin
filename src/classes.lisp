@@ -26,19 +26,49 @@
     :initarg :auth)
    (device-id
     :accessor device-id
-    :type string)))
+    :type string)
+   (status
+    :accessor status
+    :initform (make-instance 'status)
+    :type status)))
 
 (defmethod print-object ((connection connection) stream)
   (print-unreadable-object (connection stream :type t :identity t)
-    (format stream "~&URL: ~S~%Username: ~S~%Logged in: ~SAuth: ~S~%Device-id: ~S~%"
-            (str:concat (url connection) (api connection))
-            (username connection)
-            (logged-in-p connection)
-            (auth connection)
-            (device-id connection))))
+    (format
+     stream "~&URL: ~S~%Username: ~S~%Logged in: ~S~%Auth: ~S~%Device-id: ~S~%Status object: ~A~%"
+     (str:concat (url connection) (api connection))
+     (username connection)
+     (logged-in-p connection)
+     (if (slot-boundp connection 'auth)
+         (auth connection)
+         "Not authorized yet")
+     (if (slot-boundp connection 'device-id)
+         (device-id connection)
+         "No device ID yet")
+     (status connection))))
 
 (defun make-connection (username password url api)
   (make-instance 'connection :username username :password password :url url :api api))
+
+(defclass status ()
+  ((current-rooms
+    :accessor current-rooms
+    :type list)
+   (known-users
+    :accessor known-users
+    :type list)
+   (banned
+    :accessor banned
+    :type list)
+   (kicked
+    :accessor kicked
+    :type list)
+   (sync-history
+    :accessor sync-history
+    :initform (make-array 50 :element-type 'list :initial-element nil))
+   (latest-sync
+    :accessor latest-sync
+    :type list)))
 
 (defclass auth ()
   ((token

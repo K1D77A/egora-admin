@@ -8,7 +8,7 @@
 
 (defun password-login (connection)
   "Takes a CONNECTION object and attempts to login."
-  (auth-req (:post connection ("login") (password-login-plist connection) resp)
+  (auth-req (:post-no-auth connection ("login") (password-login-plist connection) resp)
     (setf (device-id connection) (pkv resp :|device_id|))
     (setf (auth connection) (make-instance 'auth :token (pkv resp :|access_token|)))
     (setf (logged-in-p connection) t)
@@ -27,12 +27,12 @@
 (defun join-room (connection id)
   "Makes CONNECTION joined the room denoted by ID. Assuming it can."
   (auth-req (:post connection ("join/" id) (list :roomid id) resp)
-    resp))
+    (push (second resp) (current-rooms connection))))
 
 (defun joined-rooms (connection)
   "Returns the rooms that CONNECTION is within."
   (auth-req (:get connection ("joined_rooms") nil resp)
-    resp))
+    (setf (current-rooms connection) (second resp))))
 
 (defun make-auth (connection)
   "Creates a plist which represents an auth token that can be sent to the server using data within
@@ -50,13 +50,6 @@ CONNECTION."
   (auth-req (:post connection ("/rooms/" room-id "/send/m.room.message")
                    (list :|msgtype| "m.text" :|body| message) resp)
     resp))
-
-(defun send-message-to-all-rooms (connection message)
-  "Sends the message MESSAGE to all the rooms that CONNECTION is in."
-  (let ((joined (pkv (joined-rooms connection)  :|joined_rooms| )))
-    (mapcar (lambda (id)
-              (send-message-to-room connection id message))
-            joined)))
 
 (defun kick-user-from-room (connection room-id user-id &optional (reason-why "kicked"))
   "Kicks the user denoted by USER-ID from ROOM-ID with the REASON-WHY."

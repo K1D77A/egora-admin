@@ -16,4 +16,5 @@
                (:file "tests")
                (:file "egora-admin")
                (:file "user-api")
-               (:file "admin-api")))
+               (:file "admin-api")
+               (:file "general-commands")))

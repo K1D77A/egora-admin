@@ -110,11 +110,6 @@
 (defun admin-delete (url token)
   (dex:delete url :headers `(("Authorization" . ,(format nil "Bearer ~A" token)))))
 
-
-
-
-
-
 (defmacro with-token (connection token-name &body body)
   `(let ((,token-name (token (auth ,connection))))
      ,@body))
@@ -125,6 +120,8 @@
 (defmacro auth-req ((method connection url plist response-var) &body body)
   (check-type url list)
   (let ((req (case method
+               (:post-no-auth
+                `(jojo:parse (post-api (list (url ,connection) (api ,connection) ,@url) ,plist)))
                (:post 
                 `(jojo:parse (post-api 
                               (tokenize (token (auth ,connection))
