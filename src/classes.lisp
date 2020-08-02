@@ -53,6 +53,7 @@
 (defclass status ()
   ((current-rooms
     :accessor current-rooms
+    :initform nil
     :type list)
    (known-users
     :accessor known-users
@@ -149,6 +150,9 @@ An additional response parameter, soft_logout, might be present on the response 
     (unless condition
       (error (format nil "Condition for ~S not defined" string)))
     condition))
+
+(defmacro pkv (plist key)
+  `(plist-key-val ,plist ,key))
 
 (add-string->condition "M_FORBIDDEN" 'm-forbidden)
 (add-string->condition "M_UNKNOWN_TOKEN" 'm-unknown-token)

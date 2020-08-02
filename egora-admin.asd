@@ -8,7 +8,11 @@
   :depends-on (#:jonathan
                #:alexandria
                #:str
-               #:dexador)
+               #:dexador
+               #:lass
+               #:ironclad
+               #:hunchentoot
+               #:spinneret)
   :serial t
   :pathname "src"
   :components ((:file "package")
@@ -17,4 +21,6 @@
                (:file "egora-admin")
                (:file "user-api")
                (:file "admin-api")
-               (:file "general-commands")))
+               (:file "general-commands")
+               (:file "site/package")
+               (:file "site/site")))

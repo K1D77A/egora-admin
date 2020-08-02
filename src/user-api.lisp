@@ -16,23 +16,37 @@
 
 (defun public-rooms (connection)
   "Returns all the public rooms accessible by CONNECTION."
-  (auth-req (:get connection ("publicRooms") nil resp)
+  (auth-req (:get connection ("public Rooms") nil resp)
     resp))
 
 (defun sync (connection)
   "Gets the latest sync object from the server using CONNECTION."
-  (auth-req (:get connection ("sync") nil resp)
-    resp))
+  (let ((plist))
+    (when (slot-boundp (status connection) 'latest-sync)
+      (setf plist (list :|since| (pkv (latest-sync (status connection)) :|next_batch|))))
+    (auth-req (:get connection ("sync") plist resp)
+      (setf (latest-sync (status connection)) resp))))
 
 (defun join-room (connection id)
   "Makes CONNECTION joined the room denoted by ID. Assuming it can."
   (auth-req (:post connection ("join/" id) (list :roomid id) resp)
-    (push (second resp) (current-rooms connection))))
+    (push (second resp)  (current-rooms (status  connection)))))
 
-(defun joined-rooms (connection)
+(defun joined-rooms (connection &optional (destructive nil))
   "Returns the rooms that CONNECTION is within."
   (auth-req (:get connection ("joined_rooms") nil resp)
-    (setf (current-rooms connection) (second resp))))
+    (when destructive 
+      (let ((c-r    (current-rooms (status connection)))
+            (joined (pkv resp :|joined_rooms|)))
+        (if (null c-r)
+            (setf (current-rooms (status connection))
+                  (mapcar (lambda (id) (list id nil)) joined))
+            (let ((diff (set-difference (mapcar #'list joined) c-r
+                                        :key #'car :test #'equal)))
+              (when diff
+                (setf (current-rooms (status connection))
+                      (append c-r (mapcar (lambda (id) (list id nil)) joined))))))))
+    resp))
 
 (defun make-auth (connection)
   "Creates a plist which represents an auth token that can be sent to the server using data within
@@ -69,16 +83,21 @@ CONNECTION."
                    (list :|user_id| user-id) resp)
     resp))
 
-(defun members-in-room (connection room-id)
+(defun members-in-room (connection room-id &optional (destructive nil))
   "Gets the members of ROOM-ID."
   (auth-req (:get connection ("/rooms/" room-id "/members")
                   nil resp)
-    (second resp)))
+    (when destructive
+      (rplacd (assoc room-id (current-rooms (status connection)) :test #'equal)
+              (rest resp)))
+    resp))
 
-(defun members-in-room-ids (connection room-id)
+(defun members-in-room-ids (connection room-id &optional (destructive nil))
   "Gets the members id's of ROOM-ID."
   (auth-req (:get connection ("/rooms/" room-id "/joined_members")
                   nil resp)
+    (when destructive
+      (rplacd (assoc room-id (current-rooms (status connection)) :test #'equal) resp))
     resp))
 
 (defun admin-whois (connection user-id)
@@ -86,4 +105,12 @@ CONNECTION."
   (auth-req (:post connection ("/admin/whois/" user-id)
                    nil resp)
     resp))
+
+;; (defun messages-in-room (connection room-id)
+;;   "Returns a list of message and state events for room denoted by ROOM-ID."
+;;   (auth-req (:get connection ("rooms/" room-id "/messages")
+;;                   (list :|from| "t17-34_16375_36_15_90_1_32_51_2" :|dir| "f"
+;;                         :|to| "s61_0_0_0_0_0_0_0_0")
+;;                   resp)
+;;     resp))
 
