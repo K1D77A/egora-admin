@@ -6,7 +6,6 @@
    (make-pathname :directory (list :relative y))
    x))
 
-(defvar *page-hash* (make-hash-table :test #'equal))
 (defparameter *server*  (make-instance 'hunchentoot:easy-acceptor
                                        :document-root (merge-directories (uiop:getcwd) "site")
                                        :port 4242 :name 'server))
@@ -14,87 +13,6 @@
 (defun start-server ()
   (hunchentoot:start *server*))
 
-(defun file-to-string (file)
-  (check-type file (or string pathname))
-  (let ((fi ""))
-    (with-open-file (s file :if-does-not-exist :error)
-      (loop :for line := (read-line s nil)
-            :while line :do (setf fi (concatenate 'string fi
-                                                  (format nil "~A~%" line)))))
-    fi))
-
-
-
-(defun add-page-from-string (string)
-  (check-type string string)
-  (add-page (intern string 'keyword)
-            (lambda ()
-              (file-to-string (concatenate 'string "." string)))))
-
-(defun add-page (name func)
-  (check-type name keyword)
-  (check-type func function)
-  (setf (gethash name *page-hash*) (funcall func)))
-
-(defun get-page (name)
-  (check-type name keyword)
-  (gethash name *page-hash*))
-
-(defun reload-page (key func)
-  (check-type key keyword)
-  (check-type func function)
-  (add-page key func))
-
-;; (add-page :milligram (lambda () (file-to-string "site/css/milligram.css")))
-;; (add-page :jquery (lambda () (file-to-string "site/js/jquery-3.5.1.min.js")))
-
-;; (defun reload-scripts ()
-;;   (reload-page :scripts
-;;                (lambda ()
-;;                  (file-to-string "site/js/scripts.js"))))
-
-;; (defun reload-main-css ()
-;;   (reload-page :main-css
-;;                (lambda ()
-;;                  (file-to-string "site/css/main.css"))))
-
-;; (defun reload-normalize-css ()
-;;   (reload-page :normalize-css
-;;                (lambda ()
-;;                  (file-to-string "site/css/normalize.css"))))
-
-;; (setf (ningle:route *app* "/css/normalize.css" :method :GET)
-;;       (lambda (params)
-;;         (declare (ignore params))
-;;         (setf (lack.response:response-headers ningle:*response*)
-;;               (append (lack.response:response-headers ningle:*response*)
-;;                       (list :content-type "text/css")))
-;;         (get-page :normalize-css)))
-
-;; (setf (ningle:route *app* "/js/scripts.js" :method :GET)
-;;       (lambda (params)
-;;         (declare (ignore params))
-;;         (setf (lack.response:response-headers ningle:*response*)
-;;               (append (lack.response:response-headers ningle:*response*)
-;;                       (list :content-type "application/javascript")))
-;;         (reload-scripts)
-;;         (get-page :scripts)))
-
-;; (setf (ningle:route *app* "/js/jquery-3.5.1.min.js" :method :GET)
-;;       (lambda (params)
-;;         (declare (ignore params))
-;;         (setf (lack.response:response-headers ningle:*response*)
-;;               (append (lack.response:response-headers ningle:*response*)
-;;                       (list :content-type "application/javascript")))
-;;         (get-page :jquery)))
-
-;; (setf (ningle:route *app* "/css/milligram.css" :method :GET)
-;;       (lambda (params)
-;;         (declare (ignore params))
-;;         (setf (lack.response:response-headers ningle:*response*)
-;;               (append (lack.response:response-headers ningle:*response*)
-;;                       (list :content-type "text/css")))
-;;         (get-page :milligram)))
 
 (define-easy-handler (css :uri "/css/main.css" :default-request-type :get)
     ()
@@ -228,39 +146,4 @@
   (remove-session *session*)
   (egora-admin:logout (gethash (session-id *session*) *cons*))
   (redirect "/"))
-
-
-
-
-;; (setf (ningle:route *app* "/" :method :GET)
-;;       (lambda (params)
-;;         (declare (ignore params))
-;;         (lambda (env)
-;;           (with-output-to-string (x)
-;;             (let ((*standard-output* x))
-;;               (main-page (getf env :lack.session))
-;;               `(200 (:content-type "text/plain")
-;;                     ,x))))))
-
-;; (setf (ningle:route *app* "/login" :method :POST)
-;;       (lambda (params)
-;;         (declare (ignore params))
-;;         (lambda (env)
-;;           (let* ((params (getf env :body-parameters))
-;;                  (user (alexandria:assoc-value params "username" :test #'string=))
-;;                  (pass (alexandria:assoc-value params "password" :test #'string=))
-;;                  (session (getf env :lack.session))
-;;                  (con (handler-case
-;;                           (egora-admin:login user pass egora-admin:*url* egora-admin:*api*)
-;;                         (egora-admin:api-error ()
-;;                           nil))))
-;;             (if con
-;;                 (progn (setf (gethash :login session)
-;;                              user)
-;;                        (setf *connection* con)
-;;                        `(200 (:content-type "text/plain")
-;;                              ,(format nil "logged in and session ~S created " session)))
-;;                 `(200 (:content-type "text/plain")
-;;                       "failed login"))))))
-
 
