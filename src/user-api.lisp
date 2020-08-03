@@ -12,11 +12,12 @@
     (setf (device-id connection) (pkv resp :|device_id|))
     (setf (auth connection) (make-instance 'auth :token (pkv resp :|access_token|)))
     (setf (logged-in-p connection) t)
+    (sync connection)
     connection))
 
 (defun public-rooms (connection)
   "Returns all the public rooms accessible by CONNECTION."
-  (auth-req (:get connection ("public Rooms") nil resp)
+  (auth-req (:get connection ("publicRooms") nil resp)
     resp))
 
 (defun sync (connection)
@@ -47,6 +48,8 @@
                 (setf (current-rooms (status connection))
                       (append c-r (mapcar (lambda (id) (list id nil)) joined))))))))
     resp))
+
+(defun room-aliases (connection room-id))
 
 (defun make-auth (connection)
   "Creates a plist which represents an auth token that can be sent to the server using data within

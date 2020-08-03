@@ -58,6 +58,10 @@
    (known-users
     :accessor known-users
     :type list)
+   (room-aliases
+    :accessor room-aliases
+    :type list
+    :initform nil)
    (banned
     :accessor banned
     :type list)

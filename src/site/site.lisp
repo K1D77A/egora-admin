@@ -83,6 +83,20 @@
                   (:input :type "submit"
                           :class "button-primary"
                           :value "Submit"))))))
+(defun pkv (plist key)
+  (egora-admin:pkv plist key))
+
+(defun admin-page (con)
+  (let ((rooms (egora-admin:current-rooms (egora-admin:status con))))
+    (with-page (:title "main")
+      (:h1 "admin-page")
+      (:div :id "rooms"
+            (:ol (dolist (id rooms)
+                   (:li (format nil "roomid: ~A" (first id))
+                        (:form :id "select-room" :action "/select-room")
+                        (:ol (dolist (user (second id))
+                               (:li (format nil "userid: ~A"
+                                            (pkv user :|user_id|))))))))))))
 
 (defun verified-session-p (session request)
   (and session
@@ -93,7 +107,12 @@
   "will 403 if session fails to verify has an implicit progn"
   `(if (verified-session-p *session* *request*)
        (progn ,@body)
-       (setf (return-code*) +http-forbidden+)))
+       (let ((con (if *session*
+                      (gethash (session-id *session*) *cons*)
+                      nil)))
+         
+         (when con (egora-admin:logout con))
+         (redirect "/"))))
 
 (define-easy-handler (index :uri "/" :default-request-type :get)
     ()
@@ -132,13 +151,13 @@
           (redirect "/admin"))
         (redirect "/"))))
 
-
 (define-easy-handler (admin :uri "/admin")
     ()
   :request-type :get
-  (verifying-session
-    (with-output-to-string (x)
-      (print-object *session* x))))
+  (with-output-to-string (x)
+    (let ((*standard-output* x))
+      (verifying-session
+        (admin-page (gethash (session-id *session*) *cons*))))))
 
 (define-easy-handler (logout :uri "/logout")
     ()

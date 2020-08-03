@@ -8,4 +8,7 @@
            #:logged-in-p
            #:M-FORBIDDEN
            #:api-error
-           #:logout))
+           #:logout
+           #:status
+           #:current-rooms
+           #:pkv))
