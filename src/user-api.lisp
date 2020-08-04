@@ -49,7 +49,9 @@
                       (append c-r (mapcar (lambda (id) (list id nil)) joined))))))))
     resp))
 
-(defun room-aliases (connection room-id))
+(defun room-aliases (connection room-id)
+  (auth-req (:get connection ("rooms/" room-id "/aliases") nil resp)
+    resp));;I don't understand why this isn't working
 
 (defun make-auth (connection)
   "Creates a plist which represents an auth token that can be sent to the server using data within
